@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Developer Productivity Predictor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <h1>Developer Productivity Predictor</h1>
+    <p>Enter values for each feature:</p>
+
+    <form id="predictForm" class="card">
+      <div class="grid">
+        <div class="input-group">
+          <label for="hours_coding">Hours Coding</label>
+          <input id="hours_coding" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="coffee_intake_mg">Coffee Intake (mg)</label>
+          <input id="coffee_intake_mg" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="distractions">Distractions</label>
+          <input id="distractions" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="sleep_hours">Sleep Hours</label>
+          <input id="sleep_hours" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="commits">Commits</label>
+          <input id="commits" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="bugs_reported">Bugs Reported</label>
+          <input id="bugs_reported" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="ai_usage_hours">AI Usage Hours</label>
+          <input id="ai_usage_hours" type="number" step="any" required />
+        </div>
+        <div class="input-group">
+          <label for="cognitive_load">Cognitive Load</label>
+          <input id="cognitive_load" type="number" step="any" required />
+        </div>
+      </div>
+      <button type="submit">Predict</button>
+    </form>
+
+    <div id="result" class="result hidden">
+      <h2>Result</h2>
+      <div class="progress-container">
+        <div id="progress-bar" class="progress-bar"></div>
+      </div>
+      <p><strong>Probability:</strong> <span id="prob">—</span></p>
+      <p><strong>Prediction:</strong> <span id="pred">—</span></p>
+    </div>
+
+    <div id="error" class="error hidden"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('predictForm');
+    const resultEl = document.getElementById('result');
+    const errorEl = document.getElementById('error');
+    const probEl = document.getElementById('prob');
+    const predEl = document.getElementById('pred');
+    const bar = document.getElementById('progress-bar');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+      resultEl.classList.add('hidden');
+
+      const features = [
+        parseFloat(document.getElementById("hours_coding").value),
+        parseFloat(document.getElementById("coffee_intake_mg").value),
+        parseFloat(document.getElementById("distractions").value),
+        parseFloat(document.getElementById("sleep_hours").value),
+        parseFloat(document.getElementById("commits").value),
+        parseFloat(document.getElementById("bugs_reported").value),
+        parseFloat(document.getElementById("ai_usage_hours").value),
+        parseFloat(document.getElementById("cognitive_load").value),
+      ];
+
+      if (features.some(v => Number.isNaN(v))) {
+        errorEl.textContent = "All fields must be filled with numbers.";
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ features })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Prediction failed");
+
+        const probPercent = (data.probability * 100).toFixed(2);
+
+        probEl.textContent = probPercent + "%";
+        predEl.textContent = data.prediction;
+
+        // update progress bar
+        bar.style.width = probPercent + "%";
+
+        // dynamic color (red <50%, yellow <75%, green otherwise)
+        if (probPercent < 50) {
+          bar.style.background = "#ef4444"; // red
+        } else if (probPercent < 75) {
+          bar.style.background = "#f59e0b"; // yellow
+        } else {
+          bar.style.background = "#22c55e"; // green
+        }
+
+        resultEl.classList.remove('hidden');
+      } catch (e) {
+        errorEl.textContent = e.message;
+        errorEl.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
